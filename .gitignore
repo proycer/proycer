@@ -1,4 +1,5 @@
 .idea
+scripts/dev/*/logs
 
 ###> symfony/framework-bundle ###
 /.env.local
