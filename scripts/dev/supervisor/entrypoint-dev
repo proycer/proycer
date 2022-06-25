@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+echo "► Running Composer Install"
+composer install --no-interaction
+
+echo "► Migrating Database"
+php bin/console doctrine:migrations:migrate --no-interaction -vvv
+
+echo "► Updating Database"
+php bin/console doctrine:schema:update --force --no-interaction -vvv
+
+echo "► Loading Database"
+php bin/console doctrine:fixtures:load --purge-with-truncate --no-interaction -vvv
+
+echo "► Script finished"

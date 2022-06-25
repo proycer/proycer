@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+UNAMEOUT="$(uname -s)"
+
+# Verify operating system is supported...
+case "${UNAMEOUT}" in
+    Linux*)             MACHINE=linux;;
+    Darwin*)            MACHINE=mac;;
+    *)                  MACHINE="UNKNOWN"
+esac
+
+if [ "$MACHINE" == "UNKNOWN" ]; then
+    echo "Unsupported operating system [$(uname -s)]. Proycer supports macOS, Linux, and Windows (WSL2)." >&2
+
+    exit 1
+fi
+
+# Determine if stdout is a terminal...
+if test -t 1; then
+    # Determine if colors are supported...
+    ncolors=$(tput colors)
+
+    if test -n "$ncolors" && test "$ncolors" -ge 8; then
+        BOLD="$(tput bold)"
+        YELLOW="$(tput setaf 3)"
+        GREEN="$(tput setaf 2)"
+        NC="$(tput sgr0)"
+    fi
+fi
+
+# Function that prints the available commands...
+function display_help {
+    echo "Proycer"
+    echo
+    echo "${YELLOW}Usage:${NC}" >&2
+    echo "  proycer COMMAND [options] [arguments]"
+    echo
+    echo "Unknown commands are passed to the docker-compose binary."
+    echo
+    echo "${YELLOW}docker-compose Commands:${NC}"
+    echo "  ${GREEN}proycer up${NC}        Start the application in the background"
+    echo "  ${GREEN}proycer stop${NC}      Stop the application"
+    echo "  ${GREEN}proycer restart${NC}   Restart the application"
+    echo "  ${GREEN}proycer ps${NC}        Display the status of all containers"
+
+    exit 1
+}
+
+# Proxy the "help" command...
+if [ $# -gt 0 ]; then
+    if [ "$1" == "help" ] || [ "$1" == "-h" ] || [ "$1" == "-help" ] || [ "$1" == "--help" ]; then
+        display_help
+    fi
+else
+    display_help
+fi
+
+# Define Docker Compose command prefix...
+docker compose &> /dev/null
+if [ $? == 0 ]; then
+    DOCKER_COMPOSE=(docker compose -f docker-compose.yml -f ./scripts/dev/docker-compose.yml)
+else
+    DOCKER_COMPOSE=(docker-compose -f docker-compose.yml -f scripts/dev/docker-compose.yml)
+fi
+
+ARGS=()
+
+if [ "$1" == "up" ]; then
+    shift 1
+
+    ARGS+=(up -d)
+else
+    ARGS+=("$@")
+fi
+
+# Run Docker Compose with the defined arguments...
+"${DOCKER_COMPOSE[@]}" "${ARGS[@]}"

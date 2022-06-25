@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+
+    core-db:
+        image: postgres:14-alpine
+        container_name: core-db
+        restart: unless-stopped
+        environment:
+            - POSTGRES_DB=database
+            - POSTGRES_USER=user
+            - POSTGRES_PASSWORD=password
+        ports:
+            - '54321:5432'
+
+    core-app:
+        container_name: core-app
+        build:
+            context: ./
+            target: php-dev
+        restart: unless-stopped
+        environment:
+            - JWT_PASSPHRASE=aedefed476af33f1cb6166ffe9822838
+            - DATABASE_URL=postgresql://skeleton_user:skeleton_password@skeleton-db:5432/skeleton_database?serverVersion=14&charset=utf8
+            - QUEUE_USER=guest
+            - QUEUE_PASS=guest
+            - QUEUE_HOST=erp-rabbitmq
+            - QUEUE_PORT=5672
+        volumes:
+            - ./:/var/www/app
+            - ./scripts/dev/supervisor/supervisord.conf:/etc/supervisord.conf
+        depends_on:
+            - core-db
+
+    core-web:
+        container_name: core-web
+        image: nginx:stable-alpine
+        restart: unless-stopped
+        environment:
+            - APP_URL=core.local
+            - SUPERVISOR_URL=supervisor.core.local
+        volumes:
+            - ./:/var/www/app
+            - ./scripts/dev/nginx/logs:/var/log/nginx
+            - ./scripts/dev/nginx/app.nginx.conf:/etc/nginx/templates/app.conf.template
+            - ./scripts/dev/nginx/supervisor.nginx.conf:/etc/nginx/templates/supervisor.conf.template
+        ports:
+            - '8000:80'
+        depends_on:
+            - core-app
